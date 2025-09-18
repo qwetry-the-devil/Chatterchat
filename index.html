@@ -1,62 +1,168 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>Username Chat</title>
-  <link rel="stylesheet" href="styles.css"/>
+  <meta charset="UTF-8" />
+  <title>Simple Chat App</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f3f3f3; }
+    #auth, #chat { max-width: 500px; margin: 20px auto; padding: 20px; background: white; border-radius: 8px; }
+    input, button { margin: 5px 0; padding: 10px; width: 100%; }
+    #messages { border: 1px solid #ccc; height: 300px; overflow-y: auto; padding: 10px; margin: 10px 0; background: #fafafa; }
+    .msg { padding: 5px; border-bottom: 1px solid #ddd; }
+    .msg strong { color: #333; }
+  </style>
 </head>
 <body>
-  <nav>
-    <span id="app-title">Username Chat</span>
-    <span id="user-name"></span>
-    <button id="logoutBtn" hidden>Logout</button>
-  </nav>
 
-  <!-- Auth -->
-  <div id="auth-view" class="view">
-    <h2>Sign Up</h2>
-    <form id="signupForm">
-      <input id="signupUsername" placeholder="Username"/>
-      <input id="signupPassword" type="password" placeholder="Password"/>
-      <button type="submit">Sign Up</button>
-    </form>
-
-    <h2>Log In</h2>
+  <!-- Login / Signup UI -->
+  <div id="auth">
+    <h2>Login</h2>
     <form id="loginForm">
-      <input id="loginUsername" placeholder="Username"/>
-      <input id="loginPassword" type="password" placeholder="Password"/>
-      <button type="submit">Log In</button>
+      <input id="loginUsername" placeholder="Username" required />
+      <input id="loginPassword" type="password" placeholder="Password" required />
+      <button type="submit">Login</button>
+    </form>
+    <h2>Signup</h2>
+    <form id="signupForm">
+      <input id="signupUsername" placeholder="Username" required />
+      <input id="signupPassword" type="password" placeholder="Password" required />
+      <button type="submit">Signup</button>
     </form>
   </div>
 
-  <!-- Main -->
-  <div id="main-view" class="view" hidden>
-    <aside id="sidebar">
-      <div id="profile">
-        <div id="profileName"></div>
-      </div>
-
-      <div>
-        <button id="newPrivateChat">New private chat</button>
-        <button id="newGroupChat">New group chat</button>
-        <button id="openGlobal">Global chat</button>
-      </div>
-
-      <ul id="chatList"></ul>
-    </aside>
-
-    <section id="chatArea">
-      <h3 id="chatTitle">Select a chat</h3>
-      <div id="messages"></div>
-      <form id="messageForm">
-        <input id="messageInput" placeholder="Type a message..."/>
-        <button type="submit">Send</button>
-      </form>
-    </section>
+  <!-- Chat UI -->
+  <div id="chat" style="display:none;">
+    <h2>Global Chat</h2>
+    <button id="logoutBtn">Logout</button>
+    <div id="messages"></div>
+    <form id="messageForm">
+      <input id="messageInput" placeholder="Type a message..." required />
+      <button type="submit">Send</button>
+    </form>
   </div>
 
-  <footer><small>Built with Firebase (no storage, free)</small></footer>
-  <script type="module" src="app.js"></script>
+  <script type="module">
+    // ===== Firebase SDKs from CDN =====
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+    import { getFirestore, collection, addDoc, setDoc, doc, serverTimestamp, query, orderBy, onSnapshot, where, getDocs } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+
+    // ===== Your Firebase Config =====
+    const firebaseConfig = {
+      apiKey: "AIzaSyAU1SHuBd24zNgP11D6aOPV3w0YFxz8bso",
+      authDomain: "cchhatteerr.firebaseapp.com",
+      projectId: "cchhatteerr",
+      storageBucket: "cchhatteerr.firebasestorage.app",
+      messagingSenderId: "462333840338",
+      appId: "1:462333840338:web:81b2a196992783a7ea160b",
+      measurementId: "G-H9M070PFZB"
+    };
+
+    // ===== Init Firebase =====
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    // ===== DOM Elements =====
+    const authDiv = document.getElementById("auth");
+    const chatDiv = document.getElementById("chat");
+    const messagesDiv = document.getElementById("messages");
+    const messageForm = document.getElementById("messageForm");
+    const messageInput = document.getElementById("messageInput");
+
+    // ===== Signup =====
+    document.getElementById("signupForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const username = document.getElementById("signupUsername").value.trim();
+      const password = document.getElementById("signupPassword").value;
+
+      // Check if username exists
+      const q = query(collection(db, "users"), where("username", "==", username));
+      const snap = await getDocs(q);
+      if (!snap.empty) {
+        alert("Username already taken");
+        return;
+      }
+
+      const fakeEmail = username + "@chat.local";
+      try {
+        const cred = await createUserWithEmailAndPassword(auth, fakeEmail, password);
+        await setDoc(doc(db, "users", cred.user.uid), {
+          username: username,
+          createdAt: serverTimestamp()
+        });
+      } catch (err) {
+        alert(err.message);
+      }
+    });
+
+    // ===== Login =====
+    document.getElementById("loginForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const username = document.getElementById("loginUsername").value.trim();
+      const password = document.getElementById("loginPassword").value;
+      const fakeEmail = username + "@chat.local";
+      try {
+        await signInWithEmailAndPassword(auth, fakeEmail, password);
+      } catch (err) {
+        alert("Invalid username or password");
+      }
+    });
+
+    // ===== Auth State =====
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        authDiv.style.display = "none";
+        chatDiv.style.display = "block";
+        loadMessages();
+      } else {
+        authDiv.style.display = "block";
+        chatDiv.style.display = "none";
+        messagesDiv.innerHTML = "";
+      }
+    });
+
+    // ===== Logout =====
+    document.getElementById("logoutBtn").addEventListener("click", () => {
+      signOut(auth);
+    });
+
+    // ===== Send Message =====
+    messageForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const text = messageInput.value.trim();
+      if (!text) return;
+
+      const userDoc = await getDocs(query(collection(db, "users"), where("username", "==", auth.currentUser.email.split("@")[0])));
+      let username = "anon";
+      userDoc.forEach(docSnap => {
+        username = docSnap.data().username;
+      });
+
+      await addDoc(collection(db, "messages"), {
+        uid: auth.currentUser.uid,
+        username: username,
+        text: text,
+        createdAt: serverTimestamp()
+      });
+      messageInput.value = "";
+    });
+
+    // ===== Load Messages =====
+    function loadMessages() {
+      const q = query(collection(db, "messages"), orderBy("createdAt", "asc"));
+      onSnapshot(q, (snapshot) => {
+        messagesDiv.innerHTML = "";
+        snapshot.forEach((doc) => {
+          const msg = doc.data();
+          const div = document.createElement("div");
+          div.className = "msg";
+          div.innerHTML = `<strong>${msg.username}:</strong> ${msg.text}`;
+          messagesDiv.appendChild(div);
+        });
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+      });
+    }
+  </script>
 </body>
 </html>
