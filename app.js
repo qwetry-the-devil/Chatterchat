@@ -1,198 +1,247 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
+// app.js (ES module)
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
 import {
-  getAuth, onAuthStateChanged, createUserWithEmailAndPassword,
-  signInWithEmailAndPassword, signOut, updateProfile
-} from "https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js";
+  getAuth,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  signOut,
+  onAuthStateChanged,
+  updateProfile
+} from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
 import {
-  getFirestore, collection, doc, setDoc, addDoc, getDocs,
-  query, where, orderBy, onSnapshot, serverTimestamp, updateDoc
-} from "https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js";
+  getFirestore,
+  collection,
+  doc,
+  setDoc,
+  addDoc,
+  getDocs,
+  getDoc,
+  query,
+  where,
+  orderBy,
+  onSnapshot,
+  serverTimestamp
+} from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
-/* === CONFIG === */
+/* =========================
+   Replace with your config
+   (this is the config you posted)
+   ========================= */
 const firebaseConfig = {
-  apiKey: "REPLACE_ME",
-  authDomain: "REPLACE_ME.firebaseapp.com",
-  projectId: "REPLACE_ME",
-  appId: "REPLACE_ME"
+  apiKey: "AIzaSyAU1SHuBd24zNgP11D6aOPV3w0YFxz8bso",
+  authDomain: "cchhatteerr.firebaseapp.com",
+  projectId: "cchhatteerr",
+  storageBucket: "cchhatteerr.firebasestorage.app",
+  messagingSenderId: "462333840338",
+  appId: "1:462333840338:web:81b2a196992783a7ea160b",
+  measurementId: "G-H9M070PFZB"
 };
-/* ============= */
 
+/* ===== init ===== */
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-/* Elements */
-const authView = document.getElementById('auth-view');
-const mainView = document.getElementById('main-view');
+/* ===== DOM ===== */
 const signupForm = document.getElementById('signupForm');
 const loginForm = document.getElementById('loginForm');
-const logoutBtn = document.getElementById('logoutBtn');
-const userNameEl = document.getElementById('user-name');
-const profileName = document.getElementById('profileName');
-const chatList = document.getElementById('chatList');
-const chatTitle = document.getElementById('chatTitle');
-const messagesEl = document.getElementById('messages');
+const signupUsername = document.getElementById('signupUsername');
+const signupPassword = document.getElementById('signupPassword');
+const loginUsername = document.getElementById('loginUsername');
+const loginPassword = document.getElementById('loginPassword');
+const messagesArea = document.getElementById('messages-area');
+
+const authSection = document.getElementById('auth');
+const chatSection = document.getElementById('chat');
+const messagesDiv = document.getElementById('messages');
 const messageForm = document.getElementById('messageForm');
 const messageInput = document.getElementById('messageInput');
-const openGlobalBtn = document.getElementById('openGlobal');
-const newPrivateChatBtn = document.getElementById('newPrivateChat');
-const newGroupChatBtn = document.getElementById('newGroupChat');
+const logoutBtn = document.getElementById('logoutBtn');
+const meName = document.getElementById('meName');
 
-let currentUser = null;
-let currentChatId = null;
+let currentUsername = null;
 let messagesUnsub = null;
-let chatsUnsub = null;
 
-/* username → fake email */
-function usernameToEmail(username) {
-  return username.toLowerCase() + "@chat.local";
+/* ===== helpers ===== */
+function showInfo(text, timeout = 4000) {
+  messagesArea.hidden = false;
+  messagesArea.textContent = text;
+  if (timeout > 0) setTimeout(() => { messagesArea.hidden = true; }, timeout);
+}
+function usernameNormalize(u) {
+  return u.trim().toLowerCase().replace(/\s+/g, '_');
+}
+function usernameValid(u) {
+  // only letters, numbers, underscore, hyphen; 3-30 chars
+  return /^[a-z0-9_\-]{3,30}$/.test(u);
+}
+function fakeEmailFor(usernameLower) {
+  return `${usernameLower}@chat.local`;
+}
+function escapeText(s) {
+  // simple escape to avoid HTML injection when inserting via innerHTML
+  const div = document.createElement('div');
+  div.textContent = s;
+  return div.innerHTML;
 }
 
-/* Signup */
-signupForm.addEventListener('submit', async e => {
+/* ===== Signup ===== */
+signupForm.addEventListener('submit', async (e) => {
   e.preventDefault();
-  const username = document.getElementById('signupUsername').value.trim();
-  const pass = document.getElementById('signupPassword').value;
-  if (!username) return alert("Enter a username");
+  const raw = signupUsername.value || '';
+  const pass = signupPassword.value || '';
+  const usernameLower = usernameNormalize(raw);
 
-  const qUser = query(collection(db, 'users'), where('username', '==', username));
-  const snap = await getDocs(qUser);
-  if (!snap.empty) return alert("Username taken");
+  if (!usernameValid(usernameLower)) {
+    showInfo('Username must be 3–30 chars: letters, numbers, underscores or hyphens.');
+    return;
+  }
+  if (pass.length < 6) {
+    showInfo('Password must be at least 6 characters.');
+    return;
+  }
 
-  const fakeEmail = usernameToEmail(username);
-  const cred = await createUserWithEmailAndPassword(auth, fakeEmail, pass);
-  await updateProfile(cred.user, { displayName: username });
-  await setDoc(doc(db, 'users', cred.user.uid), {
-    username, createdAt: serverTimestamp()
-  });
-});
-
-/* Login */
-loginForm.addEventListener('submit', async e => {
-  e.preventDefault();
-  const username = document.getElementById('loginUsername').value.trim();
-  const pass = document.getElementById('loginPassword').value;
   try {
-    await signInWithEmailAndPassword(auth, usernameToEmail(username), pass);
-  } catch {
-    alert("Invalid username or password");
-  }
-});
+    // check uniqueness
+    const q = query(collection(db, 'users'), where('usernameLower', '==', usernameLower));
+    const snap = await getDocs(q);
+    if (!snap.empty) {
+      showInfo('Username already taken. Try another.');
+      return;
+    }
 
-/* Auth state */
-logoutBtn.addEventListener('click', () => signOut(auth));
+    const fakeEmail = fakeEmailFor(usernameLower);
+    const cred = await createUserWithEmailAndPassword(auth, fakeEmail, pass);
 
-onAuthStateChanged(auth, (user) => {
-  currentUser = user;
-  if (user) {
-    authView.hidden = true;
-    mainView.hidden = false;
-    logoutBtn.hidden = false;
-    userNameEl.textContent = user.displayName;
-    profileName.textContent = user.displayName;
-    startChatListListener();
-  } else {
-    authView.hidden = false;
-    mainView.hidden = true;
-    logoutBtn.hidden = true;
-    userNameEl.textContent = '';
-    if (chatsUnsub) chatsUnsub();
-    if (messagesUnsub) messagesUnsub();
-  }
-});
-
-/* Chat List */
-function startChatListListener() {
-  const q = query(collection(db, 'chats'), where('participants', 'array-contains', currentUser.uid), orderBy('lastMessageAt','desc'));
-  if (chatsUnsub) chatsUnsub();
-  chatsUnsub = onSnapshot(q, snap => {
-    chatList.innerHTML = '';
-    snap.forEach(docSnap => {
-      const chat = docSnap.data();
-      const li = document.createElement('li');
-      li.textContent = chat.name || (chat.isGroup ? 'Group chat' : 'Private chat');
-      li.onclick = () => openChat(docSnap.id, chat);
-      chatList.appendChild(li);
+    // set displayName and user doc
+    await updateProfile(cred.user, { displayName: raw.trim() });
+    await setDoc(doc(db, 'users', cred.user.uid), {
+      username: raw.trim(),
+      usernameLower,
+      createdAt: serverTimestamp()
     });
-  });
-}
 
-/* Private chat */
-newPrivateChatBtn.addEventListener('click', async () => {
-  const uname = prompt("Enter username:");
-  if (!uname) return;
-  const q = query(collection(db,'users'), where('username','==',uname));
-  const s = await getDocs(q);
-  if (s.empty) return alert("User not found");
-  const other = s.docs[0];
-  const participants = [currentUser.uid, other.id].sort();
-  const chatId = participants.join('_');
-  const chatRef = doc(db,'chats',chatId);
-  await setDoc(chatRef, { participants, isGroup:false, name:uname, owner:currentUser.uid, createdAt:serverTimestamp() }, { merge:true });
-  openChat(chatId, { name: uname });
-});
+    // clear inputs
+    signupUsername.value = '';
+    signupPassword.value = '';
+    showInfo('Signup successful — you are logged in.', 2500);
 
-/* Group chat */
-newGroupChatBtn.addEventListener('click', async () => {
-  const name = prompt("Group name:");
-  if (!name) return;
-  const input = prompt("Comma-separated usernames:");
-  const unames = input.split(',').map(s=>s.trim()).filter(Boolean);
-  const usersRef = collection(db,'users');
-  const uids = [currentUser.uid];
-  for (const u of unames) {
-    const q = query(usersRef, where('username','==',u));
-    const s = await getDocs(q);
-    if (!s.empty) uids.push(s.docs[0].id);
+  } catch (err) {
+    console.error('Signup error', err);
+    showInfo('Signup failed: ' + (err.message || err.code));
   }
-  const chatRef = await addDoc(collection(db,'chats'), { participants:Array.from(new Set(uids)), isGroup:true, name, owner:currentUser.uid, createdAt:serverTimestamp() });
-  openChat(chatRef.id,{name});
 });
 
-/* Global chat */
-openGlobalBtn.addEventListener('click', async () => {
-  const gRef = doc(db,'chats','global');
-  await setDoc(gRef,{ name:'Global', isGroup:true },{ merge:true });
-  openChat('global',{ name:'Global' });
-});
-
-/* Open chat */
-function openChat(chatId, chatData={}) {
-  currentChatId = chatId;
-  chatTitle.textContent = chatData.name || chatId;
-  messagesEl.innerHTML='';
-  if (messagesUnsub) messagesUnsub();
-  const msgsCol = collection(db,'chats',chatId,'messages');
-  const msgsQuery = query(msgsCol, orderBy('createdAt'));
-  messagesUnsub = onSnapshot(msgsQuery,snap=>{
-    messagesEl.innerHTML='';
-    snap.forEach(m=>{
-      const d=m.data();
-      const div=document.createElement('div');
-      div.className='message';
-      const who=d.senderId===currentUser.uid?'You':d.senderName;
-      div.innerHTML=`<strong>${who}</strong> <small>${new Date(d.createdAt?.toMillis?.()||Date.now()).toLocaleTimeString()}</small><div>${d.text||''}</div>`;
-      messagesEl.appendChild(div);
-    });
-    messagesEl.scrollTop=messagesEl.scrollHeight;
-  });
-}
-
-/* Send message */
-messageForm.addEventListener('submit', async e=>{
+/* ===== Login ===== */
+loginForm.addEventListener('submit', async (e) => {
   e.preventDefault();
-  if(!currentChatId||!currentUser)return;
-  const text=messageInput.value.trim();
-  if(!text)return;
-  await addDoc(collection(db,'chats',currentChatId,'messages'), {
-    senderId: currentUser.uid,
-    senderName: currentUser.displayName,
-    text,
-    createdAt: serverTimestamp()
+  const raw = loginUsername.value || '';
+  const pass = loginPassword.value || '';
+  const usernameLower = usernameNormalize(raw);
+
+  if (!usernameValid(usernameLower)) {
+    showInfo('Invalid username format.');
+    return;
+  }
+
+  try {
+    const fakeEmail = fakeEmailFor(usernameLower);
+    await signInWithEmailAndPassword(auth, fakeEmail, pass);
+
+    // clear inputs
+    loginUsername.value = '';
+    loginPassword.value = '';
+    showInfo('Logged in.', 1400);
+
+  } catch (err) {
+    console.error('Login error', err);
+    showInfo('Login failed: Invalid username or password.');
+  }
+});
+
+/* ===== Auth state ===== */
+onAuthStateChanged(auth, async (user) => {
+  if (user) {
+    // get the user doc to read exact username
+    try {
+      const uDoc = await getDoc(doc(db, 'users', user.uid));
+      if (uDoc.exists()) {
+        const ud = uDoc.data();
+        currentUsername = ud.username || user.displayName || user.email?.split('@')[0];
+      } else {
+        // fallback: use displayName or email
+        currentUsername = user.displayName || user.email?.split('@')[0] || 'you';
+      }
+    } catch (err) {
+      console.error('Error reading user doc', err);
+      currentUsername = user.displayName || user.email?.split('@')[0] || 'you';
+    }
+
+    // show UI
+    authSection.hidden = true;
+    chatSection.hidden = false;
+    meName.textContent = currentUsername;
+    messagesDiv.innerHTML = '';
+    startMessagesListener();
+
+  } else {
+    // signed out
+    currentUsername = null;
+    authSection.hidden = false;
+    chatSection.hidden = true;
+    if (messagesUnsub) messagesUnsub();
+    messagesDiv.innerHTML = '';
+  }
+});
+
+/* ===== Logout ===== */
+logoutBtn.addEventListener('click', () => {
+  signOut(auth);
+});
+
+/* ===== Messages listener (global chat) ===== */
+function startMessagesListener() {
+  const msgsCol = collection(db, 'messages');
+  const q = query(msgsCol, orderBy('createdAt', 'asc'));
+  if (messagesUnsub) messagesUnsub();
+  messagesUnsub = onSnapshot(q, (snap) => {
+    messagesDiv.innerHTML = '';
+    snap.forEach(docSnap => {
+      const d = docSnap.data();
+      const name = escapeText(d.username || 'anon');
+      const text = escapeText(d.text || '');
+      const ts = d.createdAt ? d.createdAt.toDate().toLocaleString() : '';
+      const div = document.createElement('div');
+      div.className = 'msg';
+      div.innerHTML = `<strong>${name}</strong> <small>${ts}</small><div>${text}</div>`;
+      messagesDiv.appendChild(div);
+    });
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+  }, (err) => {
+    console.error('Messages onSnapshot error', err);
+    showInfo('Failed to load messages.');
   });
-  await updateDoc(doc(db,'chats',currentChatId), {
-    lastMessage: text,
-    lastMessageAt: serverTimestamp()
-  });
-  messageInput.value='';
+}
+
+/* ===== Send message ===== */
+messageForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const text = (messageInput.value || '').trim();
+  if (!text) return;
+  if (!auth.currentUser) {
+    showInfo('Not signed in.');
+    return;
+  }
+  try {
+    await addDoc(collection(db, 'messages'), {
+      uid: auth.currentUser.uid,
+      username: currentUsername || auth.currentUser.displayName || auth.currentUser.email?.split('@')[0],
+      text,
+      createdAt: serverTimestamp()
+    });
+    messageInput.value = '';
+  } catch (err) {
+    console.error('Send message error', err);
+    showInfo('Failed to send message.');
+  }
 });
