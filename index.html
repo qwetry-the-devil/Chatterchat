@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Username Chat</title>
+  <link rel="stylesheet" href="styles.css"/>
+</head>
+<body>
+  <nav>
+    <span id="app-title">Username Chat</span>
+    <span id="user-name"></span>
+    <button id="logoutBtn" hidden>Logout</button>
+  </nav>
+
+  <!-- Auth -->
+  <div id="auth-view" class="view">
+    <h2>Sign Up</h2>
+    <form id="signupForm">
+      <input id="signupUsername" placeholder="Username"/>
+      <input id="signupPassword" type="password" placeholder="Password"/>
+      <button type="submit">Sign Up</button>
+    </form>
+
+    <h2>Log In</h2>
+    <form id="loginForm">
+      <input id="loginUsername" placeholder="Username"/>
+      <input id="loginPassword" type="password" placeholder="Password"/>
+      <button type="submit">Log In</button>
+    </form>
+  </div>
+
+  <!-- Main -->
+  <div id="main-view" class="view" hidden>
+    <aside id="sidebar">
+      <div id="profile">
+        <div id="profileName"></div>
+      </div>
+
+      <div>
+        <button id="newPrivateChat">New private chat</button>
+        <button id="newGroupChat">New group chat</button>
+        <button id="openGlobal">Global chat</button>
+      </div>
+
+      <ul id="chatList"></ul>
+    </aside>
+
+    <section id="chatArea">
+      <h3 id="chatTitle">Select a chat</h3>
+      <div id="messages"></div>
+      <form id="messageForm">
+        <input id="messageInput" placeholder="Type a message..."/>
+        <button type="submit">Send</button>
+      </form>
+    </section>
+  </div>
+
+  <footer><small>Built with Firebase (no storage, free)</small></footer>
+  <script type="module" src="app.js"></script>
+</body>
+</html>
