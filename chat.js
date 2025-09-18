@@ -105,13 +105,55 @@ function switchChat(chatId, chatData) {
 }
 
 // ---- Messages ----
-function renderMessage(msg, mine) {
-  const div = document.createElement("div");
-  div.className = "message " + (mine ? "mine" : "their");
-  div.textContent = msg.text;
-  messagesEl.appendChild(div);
-  messagesEl.scrollTop = messagesEl.scrollHeight;
+function renderMessages(chatId) {
+  const msgsRef = collection(db, "chats", chatId, "messages");
+  const q = query(msgsRef, orderBy("createdAt"));
+
+  onSnapshot(q, async (snapshot) => {
+    messagesEl.innerHTML = "";
+
+    for (const docSnap of snapshot.docs) {
+      const msg = docSnap.data();
+
+      // Format timestamp
+      let timeStr = "";
+      if (msg.createdAt?.toDate) {
+        const d = msg.createdAt.toDate();
+        const hh = String(d.getHours()).padStart(2, "0");
+        const mm = String(d.getMinutes()).padStart(2, "0");
+        const ss = String(d.getSeconds()).padStart(2, "0");
+        timeStr = `${hh}:${mm}:${ss}`;
+      }
+
+      // Get sender's username
+      let username = "Unknown";
+      if (msg.senderId) {
+        const userDoc = await getDoc(doc(db, "users", msg.senderId));
+        if (userDoc.exists()) {
+          username = userDoc.data().username;
+        }
+      }
+
+      // Build message element
+      const div = document.createElement("div");
+      div.classList.add("message");
+
+      div.innerHTML = `
+        <div class="message-header">
+          <span class="username">${username}</span>
+          <span class="time">${timeStr}</span>
+        </div>
+        <div class="message-text">${msg.text}</div>
+      `;
+
+      messagesEl.appendChild(div);
+    }
+
+    // Auto-scroll to bottom
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+  });
 }
+
 function clearMessages() {
   messagesEl.innerHTML = "";
 }
