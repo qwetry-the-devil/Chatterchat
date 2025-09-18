@@ -3,25 +3,48 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Dark Chat Room</title>
+<title>Dark Chat Lobby</title>
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
 <main class="container">
-  <section id="chat" class="card">
-    <div class="chat-header">
-      <strong id="chatName">Chatroom</strong>
-      <button id="backBtn">Back</button>
-    </div>
+  <section id="auth" class="card">
+    <h1>Dark Chat</h1>
+    <div id="messages-area" class="info" hidden></div>
 
-    <div id="messages" class="messages"></div>
+    <form id="signupForm" class="form">
+      <h2>Sign up</h2>
+      <input id="signupUsername" placeholder="Username" autocomplete="off" required />
+      <input id="signupPassword" type="password" placeholder="Password" required />
+      <button type="submit">Sign up</button>
+    </form>
 
-    <form id="messageForm" class="form">
-      <input id="messageInput" placeholder="Type a message..." autocomplete="off" required>
-      <button type="submit">Send</button>
+    <hr>
+
+    <form id="loginForm" class="form">
+      <h2>Log in</h2>
+      <input id="loginUsername" placeholder="Username" autocomplete="off" required />
+      <input id="loginPassword" type="password" placeholder="Password" required />
+      <button type="submit">Log in</button>
     </form>
   </section>
+
+  <section id="lobby" class="card" hidden>
+    <div class="chat-header">
+      <strong id="meName"></strong>
+      <button id="logoutBtn">Logout</button>
+    </div>
+
+    <div class="lobby-actions">
+      <button id="globalBtn">Global Chat</button>
+      <button id="newPrivateBtn">New Private Chat</button>
+      <button id="newGroupBtn">New Group Chat</button>
+    </div>
+
+    <ul id="chatList"></ul>
+  </section>
 </main>
-<script type="module" src="chat.js"></script>
+
+<script type="module" src="index.js"></script>
 </body>
 </html>
