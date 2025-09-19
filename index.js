@@ -1,27 +1,15 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/11.22.1/firebase-app.js";
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/11.22.1/firebase-auth.js";
-import { getFirestore, setDoc, doc, getDoc, updateDoc, arrayUnion, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.22.1/firebase-firestore.js";
-
-// Firebase config
-const firebaseConfig = {
-  apiKey: "AIzaSyAU1SHuBd24zNgP11D6aOPV3w0YFxz8bso",
-  authDomain: "cchhatteerr.firebaseapp.com",
-  projectId: "cchhatteerr",
-  storageBucket: "cchhatteerr.firebasestorage.app",
-  messagingSenderId: "462333840338",
-  appId: "1:462333840338:web:81b2a196992783a7ea160b",
-  measurementId: "G-H9M070PFZB"
-};
-
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
+// index.js
+import { auth, db } from "./firebase.js";
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/11.22.1/firebase-auth.js";
+import { setDoc, doc, getDoc, updateDoc, arrayUnion, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.22.1/firebase-firestore.js";
 
 const loginBtn = document.getElementById("loginBtn");
 const signupBtn = document.getElementById("signupBtn");
 const statusEl = document.getElementById("status");
 
-function usernameNormalize(u) { return u.trim().toLowerCase().replace(/\s+/g,'_'); }
+function usernameNormalize(u) {
+  return u.trim().toLowerCase().replace(/\s+/g,'_');
+}
 
 signupBtn.addEventListener("click", async () => {
   const username = document.getElementById("username").value;
