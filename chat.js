@@ -50,4 +50,54 @@ async function sendMessage(){
 
   await addDoc(collection(db,'chats',currentChatId,'messages'),{
     text,
-    senderId: currentUser.uid
+    senderId: currentUser.uid,
+    username: currentUser.displayName || currentUser.email.split('@')[0],
+    createdAt: serverTimestamp()
+  });
+
+  messageInput.value="";
+}
+
+function subscribeMessages(){
+  const q = query(collection(db,'chats',currentChatId,'messages'),orderBy('createdAt'));
+  onSnapshot(q,snap=>{
+    messagesEl.innerHTML='';
+    snap.forEach(doc=>renderMessage(doc.data()));
+  });
+}
+
+function renderMessage(m){
+  const mine = m.senderId===currentUser.uid;
+  const div = document.createElement('div');
+  div.className = 'message '+(mine?'mine':'their');
+
+  const user = escapeHtml(m.username||'anon');
+  const time = m.createdAt?.toDate ? formatTimeWithSeconds(m.createdAt.toDate()) : '';
+
+  div.innerHTML = `<div class="meta"><strong>${user}</strong> • <span>${time}</span></div>
+                   <div class="body">${escapeHtml(m.text||'')}</div>`;
+  messagesEl.appendChild(div);
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+}
+
+function escapeHtml(text){
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+function formatTimeWithSeconds(d){
+  const h = d.getHours().toString().padStart(2,'0');
+  const m = d.getMinutes().toString().padStart(2,'0');
+  const s = d.getSeconds().toString().padStart(2,'0');
+  return `${h}:${m}:${s}`;
+}
+
+async function loadChats(){
+  const chatRef = doc(db,'chats','global');
+  const chatSnap = await getDoc(chatRef);
+  if(chatSnap.exists()){
+    chatListEl.innerHTML = `<li data-id="global">🌍 Global Chat</li>`;
+    chatListEl.querySelector('li').classList.add('active');
+  }
+}
