@@ -158,19 +158,20 @@ async function switchChat(chatId, chatData){
 }
 
 /* Render one message */
-function renderMessage(m, mine){
+function renderMessage(m){
+  const mine = m.senderId === currentUser.uid;
   const div = document.createElement('div');
   div.className = 'message ' + (mine ? 'mine' : 'their');
 
   const user = escapeHtml(m.username || 'anon');
   const time = formatTimeWithSeconds(m.createdAt);
 
-  const meta = `<div class="meta"><strong>${user}</strong> <span style="color:var(--muted)">•</span> <span>${escapeHtml(time)}</span></div>`;
-  const body = `<div class="body">${escapeHtml(m.text || '')}</div>`;
-
-  div.innerHTML = meta + body;
+  div.innerHTML = `<div class="meta"><strong>${user}</strong> <span style="color:var(--muted)">•</span> <span>${escapeHtml(time)}</span></div>
+                   <div class="body">${escapeHtml(m.text || '')}</div>`;
   messagesEl.appendChild(div);
   messagesEl.scrollTop = messagesEl.scrollHeight;
+}
+
 }
 function clearMessages(){ messagesEl.innerHTML = ''; }
 
