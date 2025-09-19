@@ -7,79 +7,26 @@
   --their-bg: #2c2c2c;
 }
 
-body {
-  margin: 0;
-  font-family: sans-serif;
-  background: var(--bg);
-  color: var(--text);
-}
+body { margin:0; font-family:sans-serif; background: var(--bg); color: var(--text); }
 
 .login-container {
-  width: 300px;
-  margin: 100px auto;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+  width: 300px; margin: 100px auto; display: flex; flex-direction: column; gap: 10px;
 }
 
-.chat-container {
-  display: flex;
-  height: 100vh;
-}
+.chat-container { display:flex; height:100vh; }
 
-.sidebar {
-  width: 220px;
-  background: var(--sidebar);
-  padding: 10px;
-  overflow-y: auto;
-}
+.sidebar { width:220px; background:var(--sidebar); padding:10px; overflow-y:auto; }
 
-.chat-main {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-}
+.chat-main { flex:1; display:flex; flex-direction:column; }
 
-.messages {
-  flex: 1;
-  padding: 10px;
-  overflow-y: auto;
-}
+.messages { flex:1; padding:10px; overflow-y:auto; }
 
-.message {
-  margin: 5px 0;
-  padding: 8px 12px;
-  border-radius: 8px;
-  max-width: 60%;
-  word-wrap: break-word;
-}
+.message { margin:5px 0; padding:8px 12px; border-radius:8px; max-width:60%; word-wrap:break-word; }
 
-.message.mine {
-  margin-left: auto;
-  background: var(--mine-bg);
-  color: #fff;
-}
+.message.mine { margin-left:auto; background:var(--mine-bg); color:#fff; }
+.message.their { margin-right:auto; background:var(--their-bg); }
 
-.message.their {
-  margin-right: auto;
-  background: var(--their-bg);
-}
+.message .meta { font-size:0.75rem; color:var(--muted); }
 
-.message .meta {
-  font-size: 0.75rem;
-  color: var(--muted);
-}
-
-.input-container {
-  display: flex;
-  padding: 10px;
-  background: var(--sidebar);
-}
-
-input#messageInput {
-  flex: 1;
-  padding: 8px;
-  border: none;
-  border-radius: 4px;
-  margin-right: 8px;
-}
+.input-container { display:flex; padding:10px; background:var(--sidebar); }
+input#messageInput { flex:1; padding:8px; border:none; border-radius:4px; margin-right:8px; }
