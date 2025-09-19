@@ -1,58 +1,22 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Dark Chat Room</title>
+  <meta charset="UTF-8">
+  <title>Chat</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <div class="app-container">
-    <!-- Sidebar -->
-    <aside class="sidebar">
-      <header class="sidebar-header">
-        <h2>Chats</h2>
-        <button id="newChatBtn" class="btn-small">+ New</button>
-      </header>
-
-      <ul id="chatList" class="chat-list"></ul>
-
-      <footer class="sidebar-footer">
-        <button id="logoutBtn" class="btn-small danger">Logout</button>
-      </footer>
-    </aside>
-
-    <!-- Main Chat Section -->
-    <main class="chat-main">
-      <div class="chat-header">
-        <strong id="chatName">Select a chat</strong>
+  <div class="chat-container">
+    <div class="sidebar">
+      <h3>Chats</h3>
+      <ul id="chatList"></ul>
+    </div>
+    <div class="chat-main">
+      <div id="messages" class="messages"></div>
+      <div class="input-container">
+        <input type="text" id="messageInput" placeholder="Type a message...">
+        <button id="sendBtn">Send</button>
       </div>
-
-      <div id="messages" class="messages" aria-live="polite"></div>
-
-      <form id="messageForm" class="form message-form">
-        <input id="messageInput" placeholder="Type a message..." autocomplete="off" required>
-        <button type="submit" class="btn-send">Send</button>
-      </form>
-    </main>
-  </div>
-
-  <!-- New Chat Modal -->
-  <div id="newChatModal" class="modal hidden" role="dialog" aria-modal="true">
-    <div class="modal-content">
-      <h3>Create New Chat</h3>
-      <form id="newChatForm" class="form">
-        <label for="newChatName">Chat Name</label>
-        <input type="text" id="newChatName" required placeholder="Group name or short description">
-
-        <label for="newChatUsers">Usernames (comma separated for invites)</label>
-        <input type="text" id="newChatUsers" placeholder="alice,bob (leave empty for one-person group)">
-
-        <div class="modal-actions">
-          <button type="submit" class="btn-small">Create</button>
-          <button type="button" id="closeModal" class="btn-small muted">Cancel</button>
-        </div>
-      </form>
     </div>
   </div>
 
