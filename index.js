@@ -65,6 +65,24 @@ loginForm.addEventListener("submit", async (e) => {
 });
 
 /* SIGNUP */
+// ensure global chat exists
+const globalRef = doc(db, "chats", "global");
+const globalSnap = await getDoc(globalRef);
+if(!globalSnap.exists()){
+  await setDoc(globalRef, {
+    name: "🌍 Global Chat",
+    isGroup: true,
+    members: [userCred.user.uid],
+    createdAt: serverTimestamp()
+  });
+} else {
+  // add new user if not already member
+  const globalData = globalSnap.data();
+  if(!globalData.members.includes(userCred.user.uid)){
+    await updateDoc(globalRef, { members: arrayUnion(userCred.user.uid) });
+  }
+}
+
 signupForm.addEventListener("submit", async (e) => {
   e.preventDefault();
   const usernameRaw = document.getElementById("signupUsername").value.trim();
