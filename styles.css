@@ -209,3 +209,9 @@ body{
   .sidebar{ display:none; }
   .chat-main{ width:100vw; }
 }
+.message.their {
+  margin-right:auto;
+  margin-left:0;
+  background:#111318;
+  color:var(--text);
+}
