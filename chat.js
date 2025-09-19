@@ -1,24 +1,28 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+// chat.js
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+import {
+  getAuth,
+  onAuthStateChanged,
+  signOut
+} from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+
 import {
   getFirestore,
   collection,
   doc,
   addDoc,
+  setDoc,
+  getDoc,
   getDocs,
   query,
   where,
   orderBy,
   onSnapshot,
   serverTimestamp,
-  setDoc
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-import {
-  getAuth,
-  onAuthStateChanged,
-  signOut
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+  updateDoc
+} from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
-// ---- Firebase config ----
+/* ========== Firebase config (your provided config) ========== */
 const firebaseConfig = {
   apiKey: "AIzaSyAU1SHuBd24zNgP11D6aOPV3w0YFxz8bso",
   authDomain: "cchhatteerr.firebaseapp.com",
@@ -28,18 +32,20 @@ const firebaseConfig = {
   appId: "1:462333840338:web:81b2a196992783a7ea160b",
   measurementId: "G-H9M070PFZB"
 };
+/* ================================================ */
 
 const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
 const auth = getAuth(app);
+const db = getFirestore(app);
 
-// ---- Elements ----
+/* Elements */
 const chatListEl = document.getElementById("chatList");
 const chatNameEl = document.getElementById("chatName");
 const messagesEl = document.getElementById("messages");
 const messageForm = document.getElementById("messageForm");
 const messageInput = document.getElementById("messageInput");
 const logoutBtn = document.getElementById("logoutBtn");
+
 const newChatBtn = document.getElementById("newChatBtn");
 const newChatModal = document.getElementById("newChatModal");
 const closeModalBtn = document.getElementById("closeModal");
@@ -47,125 +53,203 @@ const newChatForm = document.getElementById("newChatForm");
 const newChatNameInput = document.getElementById("newChatName");
 const newChatUsersInput = document.getElementById("newChatUsers");
 
-// ---- State ----
+/* State */
 let currentUser = null;
 let currentChatId = null;
 let unsubscribeMessages = null;
+let chatCache = {}; // cache chat metadata
 
-// ---- Auth ----
+/* Helpers */
+function escapeHtml(s){
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+function formatTimeWithSeconds(ts){
+  // ts is a Firestore Timestamp
+  if(!ts) return '';
+  const d = ts.toDate();
+  return d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute:'2-digit', second:'2-digit' });
+}
+
+/* Auth check */
 onAuthStateChanged(auth, async (user) => {
   if (!user) {
-    window.location.href = "index.html";
+    location.href = "index.html";
     return;
   }
   currentUser = user;
   await loadChats();
 });
 
-// ---- Load chats ----
-async function loadChats() {
-  chatListEl.innerHTML = "";
+/* Load chats the user is a member of */
+async function loadChats(){
+  chatListEl.innerHTML = '';
 
+  // query chats where members array contains currentUser.uid
   const q = query(collection(db, "chats"), where("members", "array-contains", currentUser.uid));
   const snap = await getDocs(q);
 
-  snap.forEach((docSnap) => {
-    const chat = docSnap.data();
-    const li = document.createElement("li");
+  // Put global chat at top if present
+  const rows = [];
+  snap.forEach(ds => {
+    const d = ds.data();
+    d._id = ds.id;
+    rows.push(d);
+    chatCache[ds.id] = d;
+  });
 
-    if (docSnap.id === "global") {
-      li.textContent = "🌍 Global Chat";
-    } else {
-      li.textContent = chat.name || "Unnamed Chat";
-    }
+  // ensure global exists in list and is first
+  rows.sort((a,b)=>{
+    if(a._id === 'global') return -1;
+    if(b._id === 'global') return 1;
+    return (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0);
+  });
 
-    li.onclick = () => switchChat(docSnap.id, chat);
+  rows.forEach(chat => {
+    const li = document.createElement('li');
+    li.dataset.chatId = chat._id;
+    const name = chat._id === 'global' ? '🌍 Global Chat' : (chat.name || 'Unnamed Chat');
+    li.innerHTML = `<span class="chat-name">${escapeHtml(name)}</span>
+                    <span class="chat-meta">${(chat.lastMessageAt?.toDate?.().toLocaleTimeString() || '')}</span>`;
+    li.addEventListener('click', async ()=> {
+      // fetch up-to-date chat data
+      const chatRef = doc(db,'chats',chat._id);
+      const chatSnap = await getDoc(chatRef);
+      const chatData = chatSnap.exists() ? chatSnap.data() : chat;
+      switchChat(chat._id, chatData);
+    });
     chatListEl.appendChild(li);
   });
+
+  // if there is a global chat and no currentChatId, auto-open it
+  if(rows.length){
+    const first = rows[0];
+    switchChat(first._id, first);
+  }
 }
 
-// ---- Switch chat ----
-function switchChat(chatId, chatData) {
+/* Switch chat and subscribe to messages */
+async function switchChat(chatId, chatData){
   currentChatId = chatId;
-  chatNameEl.textContent = chatData.name || "Chat";
+  chatNameEl.textContent = chatId === 'global' ? '🌍 Global Chat' : (chatData.name || 'Chat');
+
+  // update members array to include user (so the chat shows in their list)
+  try {
+    await updateDoc(doc(db,'chats',chatId), { members: Array.from(new Set([...(chatData.members||[]), currentUser.uid])) });
+  } catch (err) {
+    // ignore if update fails for read-only global etc.
+  }
+
+  if(unsubscribeMessages) unsubscribeMessages();
   clearMessages();
 
-  if (unsubscribeMessages) unsubscribeMessages();
-
-  const msgCol = collection(db, "chats", chatId, "messages");
-  const q = query(msgCol, orderBy("createdAt", "asc"));
-
-  unsubscribeMessages = onSnapshot(q, (snap) => {
+  const msgsCol = collection(db, 'chats', chatId, 'messages');
+  const q = query(msgsCol, orderBy('createdAt','asc'));
+  unsubscribeMessages = onSnapshot(q, snap=>{
     clearMessages();
-    snap.forEach((docSnap) => {
-      const msg = docSnap.data();
-      renderMessage(msg, msg.senderId === currentUser.uid);
+    snap.forEach(dsnap=>{
+      const m = dsnap.data();
+      renderMessage(m, m.senderId === currentUser.uid);
     });
+  }, err => {
+    console.error("messages onSnapshot error:", err);
   });
 }
 
-// ---- Messages ----
-function renderMessage(msg, mine) {
-  const div = document.createElement("div");
-  div.className = "message " + (mine ? "mine" : "their");
-  div.textContent = msg.text;
+/* Render one message */
+function renderMessage(m, mine){
+  const div = document.createElement('div');
+  div.className = 'message ' + (mine ? 'mine' : 'their');
+
+  const user = escapeHtml(m.username || 'anon');
+  const time = formatTimeWithSeconds(m.createdAt);
+
+  const meta = `<div class="meta"><strong>${user}</strong> <span style="color:var(--muted)">•</span> <span>${escapeHtml(time)}</span></div>`;
+  const body = `<div class="body">${escapeHtml(m.text || '')}</div>`;
+
+  div.innerHTML = meta + body;
   messagesEl.appendChild(div);
   messagesEl.scrollTop = messagesEl.scrollHeight;
 }
-function clearMessages() {
-  messagesEl.innerHTML = "";
-}
+function clearMessages(){ messagesEl.innerHTML = ''; }
 
-// ---- Send message ----
-messageForm.addEventListener("submit", async (e) => {
+/* Send message */
+messageForm.addEventListener('submit', async (e)=>{
   e.preventDefault();
-  if (!currentChatId) return;
-  const msgText = messageInput.value.trim();
-  if (!msgText) return;
+  if(!currentChatId) return;
+  const text = messageInput.value.trim();
+  if(!text) return;
 
-  const msgCol = collection(db, "chats", currentChatId, "messages");
-  await addDoc(msgCol, {
-    text: msgText,
-    senderId: currentUser.uid,
-    createdAt: serverTimestamp(),
-  });
-  messageInput.value = "";
+  try {
+    await addDoc(collection(db,'chats',currentChatId,'messages'), {
+      text,
+      senderId: currentUser.uid,
+      username: (currentUser.displayName || currentUser.email?.split('@')[0] || 'anon'),
+      createdAt: serverTimestamp()
+    });
+
+    // update lastMessageAt and lastMessage on chat root
+    const chatRef = doc(db,'chats',currentChatId);
+    await updateDoc(chatRef, {
+      lastMessage: text.slice(0,120),
+      lastMessageAt: serverTimestamp()
+    });
+    messageInput.value = '';
+  } catch (err) {
+    console.error("send message error:", err);
+    alert("Failed to send message.");
+  }
 });
 
-// ---- Logout ----
-logoutBtn.addEventListener("click", async () => {
+/* Logout */
+logoutBtn.addEventListener('click', async ()=>{
   await signOut(auth);
-  window.location.href = "index.html";
+  location.href = 'index.html';
 });
 
-// ---- Modal controls ----
-newChatBtn.addEventListener("click", () => newChatModal.classList.remove("hidden"));
-closeModalBtn.addEventListener("click", () => newChatModal.classList.add("hidden"));
+/* New chat modal controls & create */
+newChatBtn?.addEventListener('click', ()=> newChatModal.classList.remove('hidden'));
+closeModalBtn?.addEventListener('click', ()=> newChatModal.classList.add('hidden'));
 
-newChatForm.addEventListener("submit", async (e) => {
+newChatForm?.addEventListener('submit', async (e)=>{
   e.preventDefault();
-  const chatName = newChatNameInput.value.trim();
-  const usernames = newChatUsersInput.value.split(",").map((u) => u.trim()).filter((u) => u);
-  if (!chatName) return;
+  const name = newChatNameInput.value.trim();
+  const rawUsers = newChatUsersInput.value.trim();
+  const usernames = rawUsers ? rawUsers.split(',').map(s=>s.trim()).filter(Boolean) : [];
 
-  let memberIds = [currentUser.uid];
-  for (let uname of usernames) {
-    const userSnap = await getDocs(query(collection(db, "users"), where("username", "==", uname)));
-    if (!userSnap.empty) {
-      userSnap.forEach((docSnap) => {
-        if (!memberIds.includes(docSnap.id)) memberIds.push(docSnap.id);
-      });
-    }
+  // Resolve usernames to UIDs
+  const members = [currentUser.uid];
+  for (const uname of usernames) {
+    // try to find user by username field
+    const q = query(collection(db,'users'), where('username','==', uname));
+    const snap = await getDocs(q);
+    snap.forEach(docSnap => {
+      if(!members.includes(docSnap.id)) members.push(docSnap.id);
+    });
   }
 
-  await setDoc(doc(collection(db, "chats")), {
-    name: chatName,
-    members: memberIds,
-    isGroup: memberIds.length > 2,
-    createdAt: serverTimestamp(),
-  });
+  // Create chat
+  try {
+    const chatRef = await addDoc(collection(db,'chats'), {
+      name: name || 'New Chat',
+      members,
+      isGroup: members.length > 2,
+      createdAt: serverTimestamp()
+    });
 
-  newChatForm.reset();
-  newChatModal.classList.add("hidden");
-  await loadChats();
+    // close modal & reload list & open the new chat
+    newChatForm.reset();
+    newChatModal.classList.add('hidden');
+    await loadChats();
+
+    // open it directly
+    const chatSnap = await getDoc(doc(db,'chats',chatRef.id));
+    if(chatSnap.exists()){
+      switchChat(chatRef.id, chatSnap.data());
+    }
+  } catch (err) {
+    console.error("create chat error:", err);
+    alert("Failed to create chat.");
+  }
 });
