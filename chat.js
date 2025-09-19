@@ -41,6 +41,7 @@ messageInput.addEventListener("keypress", e => {
 async function sendMessage(){
   const text = messageInput.value.trim();
   if(!text) return;
+
   const chatRef = doc(db, 'chats', currentChatId);
   const chatSnap = await getDoc(chatRef);
 
@@ -48,7 +49,7 @@ async function sendMessage(){
     await updateDoc(chatRef,{ members: arrayUnion(currentUser.uid) });
   }
 
-  await addDoc(collection(db, 'chats', currentChatId, 'messages'), {
+  await addDoc(collection(db, 'chats', currentChatId, 'messages'),{
     text,
     senderId: currentUser.uid,
     username: currentUser.displayName || currentUser.email.split('@')[0],
