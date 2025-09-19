@@ -1,20 +1,7 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/11.22.1/firebase-app.js";
-import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.22.1/firebase-auth.js";
-import { getFirestore, doc, getDoc, collection, addDoc, updateDoc, arrayUnion, onSnapshot, serverTimestamp, query, orderBy } from "https://www.gstatic.com/firebasejs/11.22.1/firebase-firestore.js";
-
-const firebaseConfig = {
-  apiKey: "AIzaSyAU1SHuBd24zNgP11D6aOPV3w0YFxz8bso",
-  authDomain: "cchhatteerr.firebaseapp.com",
-  projectId: "cchhatteerr",
-  storageBucket: "cchhatteerr.firebasestorage.app",
-  messagingSenderId: "462333840338",
-  appId: "1:462333840338:web:81b2a196992783a7ea160b",
-  measurementId: "G-H9M070PFZB"
-};
-
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
+// chat.js
+import { auth, db } from "./firebase.js";
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.22.1/firebase-auth.js";
+import { doc, getDoc, collection, addDoc, updateDoc, arrayUnion, onSnapshot, serverTimestamp, query, orderBy } from "https://www.gstatic.com/firebasejs/11.22.1/firebase-firestore.js";
 
 let currentUser;
 let currentChatId = "global";
@@ -101,3 +88,4 @@ async function loadChats(){
     chatListEl.querySelector('li').classList.add('active');
   }
 }
+
